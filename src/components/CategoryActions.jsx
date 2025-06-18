@@ -1,11 +1,28 @@
-function CategoryActions({ category, bulkAction }) {
+import React from "react";
+
+const CategoryActions = ({ category, onBulkAction }) => {
   return (
-    <div className="mb-2 space-x-2">
-      <button onClick={() => bulkAction(category, "start")} className="px-2 py-1 bg-green-600 text-white rounded">Start All</button>
-      <button onClick={() => bulkAction(category, "pause")} className="px-2 py-1 bg-yellow-500 text-white rounded">Pause All</button>
-      <button onClick={() => bulkAction(category, "reset")} className="px-2 py-1 bg-gray-600 text-white rounded">Reset All</button>
+    <div className="space-x-2">
+      <button
+        className="bg-green-500 px-2 py-1 text-white rounded"
+        onClick={() => onBulkAction(category, "start")}
+      >
+        Start All
+      </button>
+      <button
+        className="bg-yellow-500 px-2 py-1 text-white rounded"
+        onClick={() => onBulkAction(category, "pause")}
+      >
+        Pause All
+      </button>
+      <button
+        className="bg-blue-500 px-2 py-1 text-white rounded"
+        onClick={() => onBulkAction(category, "reset")}
+      >
+        Reset All
+      </button>
     </div>
   );
-}
+};
 
 export default CategoryActions;

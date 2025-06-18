@@ -1,25 +1,36 @@
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import HistoryPage from "./pages/HistoryPage";
-import { TimersContext } from "./hooks/TimersContext";
-import { useTimers } from "./hooks/useTimers";
 
 function App() {
-  const timersHook = useTimers(); // one instance for the whole app
+  const [theme, setTheme] = useState("light");
+
+  useEffect(() => {
+    document.documentElement.className = theme;
+  }, [theme]);
+
+  const toggleTheme = () =>
+    setTheme(prev => (prev === "light" ? "dark" : "light"));
 
   return (
-    <TimersContext.Provider value={timersHook}>
-      <Router>
-        <nav className="flex gap-4 p-4 bg-gray-800 text-white">
-          <Link to="/">Home</Link>
-          <Link to="/history">History</Link>
+    <Router>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-black dark:text-white">
+        <nav className="p-4 flex justify-between items-center bg-blue-500 text-white">
+          <div className="space-x-4">
+            <Link to="/">Home</Link>
+            <Link to="/history">History</Link>
+          </div>
+          <button onClick={toggleTheme}>
+            {theme === "light" ? "🌙" : "☀️"}
+          </button>
         </nav>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/history" element={<HistoryPage />} />
         </Routes>
-      </Router>
-    </TimersContext.Provider>
+      </div>
+    </Router>
   );
 }
 
