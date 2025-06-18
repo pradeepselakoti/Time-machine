@@ -1,55 +1,206 @@
 import React, { useEffect, useState } from "react";
+import { useTimersContext } from "../hooks/TimersContext";
 import ProgressBar from "./ProgressBar";
+import Modal from "./Modal";
 
-const TimerItem = ({ timer, onStart, onPause, onReset }) => {
-  const [showModal, setShowModal] = useState(false);
-  const [halfwayShown, setHalfwayShown] = useState(false);
+const TimerItem = ({ timer }) => {
+  const { startTimer, pauseTimer, resetTimer, deleteTimer } = useTimersContext();
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [halfwayAlertShown, setHalfwayAlertShown] = useState(false);
 
+  // Check for completion and halfway point
   useEffect(() => {
-    if (timer.remaining <= 0 && !timer.completed) {
-      setShowModal(true);
+    // Timer completed
+    if (timer.remaining <= 0 && timer.status === "Completed" && !showCompletionModal) {
+      setShowCompletionModal(true);
     }
 
+    // Halfway alert (only show once per timer cycle)
     if (
-      !halfwayShown &&
+      !halfwayAlertShown &&
       timer.remaining <= timer.duration / 2 &&
-      timer.remaining > 0
+      timer.remaining > 0 &&
+      timer.status === "Running"
     ) {
-      alert(`⏳ You're halfway through "${timer.name}"!`);
-      setHalfwayShown(true);
+      setHalfwayAlertShown(true);
+      // Show browser notification if supported
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(`⏱️ Timer Alert`, {
+          body: `"${timer.name}" is halfway complete!`,
+          icon: "/favicon.ico"
+        });
+      } else {
+        // Fallback to alert
+        alert(`⏳ Halfway there! "${timer.name}" is 50% complete.`);
+      }
     }
-  }, [timer.remaining]);
+
+    // Reset halfway alert when timer is reset
+    if (timer.remaining === timer.duration) {
+      setHalfwayAlertShown(false);
+    }
+  }, [timer.remaining, timer.status, timer.duration, timer.name, showCompletionModal, halfwayAlertShown]);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Format time display
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Get status color
+  const getStatusColor = () => {
+    switch (timer.status) {
+      case "Running":
+        return "text-green-600 dark:text-green-400";
+      case "Paused":
+        return "text-yellow-600 dark:text-yellow-400";
+      case "Completed":
+        return "text-blue-600 dark:text-blue-400";
+      default:
+        return "text-gray-600 dark:text-gray-400";
+    }
+  };
+
+  // Get status icon
+  const getStatusIcon = () => {
+    switch (timer.status) {
+      case "Running":
+        return "▶️";
+      case "Paused":
+        return "⏸️";
+      case "Completed":
+        return "✅";
+      default:
+        return "⏱️";
+    }
+  };
+
+  const handleStart = () => {
+    if (timer.remaining > 0) {
+      startTimer(timer.id);
+    }
+  };
+
+  const handlePause = () => {
+    pauseTimer(timer.id);
+  };
+
+  const handleReset = () => {
+    resetTimer(timer.id);
+    setHalfwayAlertShown(false);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`Are you sure you want to delete "${timer.name}"?`)) {
+      deleteTimer(timer.id);
+    }
+  };
 
   return (
-    <div className="p-3 rounded shadow bg-white dark:bg-gray-800 mb-3">
-      <div className="flex justify-between items-center">
-        <div>
-          <h4 className="font-bold">{timer.name}</h4>
-          <p>{Math.max(timer.remaining, 0)}s</p>
-          <p>Status: {timer.status}</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4 space-y-4 transition-all duration-200 hover:shadow-lg">
+      {/* Timer Header */}
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {timer.name}
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Category: {timer.category}
+          </p>
         </div>
-        <div className="space-x-2">
-          <button onClick={() => onStart(timer.id)}>▶️</button>
-          <button onClick={() => onPause(timer.id)}>⏸️</button>
-          <button onClick={() => onReset(timer.id)}>🔄</button>
+        
+        <div className="flex items-center space-x-2">
+          <span className={`text-sm font-medium ${getStatusColor()}`}>
+            {getStatusIcon()} {timer.status}
+          </span>
         </div>
       </div>
-      <ProgressBar progress={Math.max(0, (timer.remaining / timer.duration) * 100)} />
 
-      {showModal && (
-        <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-lg text-center">
-            <h2 className="text-xl font-bold mb-2">🎉 Timer Completed!</h2>
-            <p>{timer.name} has finished.</p>
-            <button
-              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
-              onClick={() => setShowModal(false)}
-            >
-              Close
-            </button>
+      {/* Timer Display */}
+      <div className="text-center">
+        <div className="text-3xl font-mono font-bold text-gray-900 dark:text-white">
+          {formatTime(Math.max(0, timer.remaining))}
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Duration: {formatTime(timer.duration)}
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <ProgressBar 
+        current={timer.remaining}
+        total={timer.duration}
+        showPercentage={true}
+        showTime={false}
+      />
+
+      {/* Control Buttons */}
+      <div className="flex justify-center space-x-2">
+        <button
+          onClick={handleStart}
+          disabled={timer.status === "Running" || timer.remaining <= 0}
+          className="flex items-center space-x-1 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          <span>▶️</span>
+          <span>Start</span>
+        </button>
+        
+        <button
+          onClick={handlePause}
+          disabled={timer.status !== "Running"}
+          className="flex items-center space-x-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          <span>⏸️</span>
+          <span>Pause</span>
+        </button>
+        
+        <button
+          onClick={handleReset}
+          className="flex items-center space-x-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          <span>🔄</span>
+          <span>Reset</span>
+        </button>
+        
+        <button
+          onClick={handleDelete}
+          className="flex items-center space-x-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          <span>🗑️</span>
+          <span>Delete</span>
+        </button>
+      </div>
+
+      {/* Completion Modal */}
+      <Modal
+        isOpen={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        title="Timer Completed!"
+        type="success"
+      >
+        <div className="text-center space-y-4">
+          <div className="text-6xl">🎉</div>
+          <div>
+            <p className="text-lg font-semibold">
+              Congratulations!
+            </p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Your timer "<strong>{timer.name}</strong>" has completed successfully.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+              Duration: {formatTime(timer.duration)}
+            </p>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };
