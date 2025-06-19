@@ -4,7 +4,7 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (event) => {
-      if (event.keyCode === 27) {
+      if (event.key === "Escape" || event.keyCode === 27) {
         onClose();
       }
     };
@@ -56,12 +56,26 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
 
   const styles = getModalStyles();
 
+  // Handle close with proper event handling
+  const handleClose = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClose();
+  };
+
+  // Handle backdrop click
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
+        onClick={handleBackdropClick}
       />
       
       {/* Modal */}
@@ -72,9 +86,10 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
             {title}
           </h2>
           <button
-            onClick={onClose}
-            className="text-white hover:text-gray-200 transition-colors p-1 rounded"
+            onClick={handleClose}
+            className="text-white hover:text-gray-200 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
             aria-label="Close modal"
+            type="button"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -90,8 +105,9 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
         {/* Footer with close button */}
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex justify-end">
           <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium"
+            onClick={handleClose}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+            type="button"
           >
             Close
           </button>
