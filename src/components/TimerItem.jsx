@@ -1,20 +1,19 @@
+// Updated App.jsx - Change the background from blue to white
+// In your App.jsx file, change this line:
+// <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors">
+// To:
+// <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
+
 import React, { useEffect, useState } from "react";
 import { useTimersContext } from "../hooks/TimersContext";
 import ProgressBar from "./ProgressBar";
-import Modal from "./Modal";
 
 const TimerItem = ({ timer }) => {
   const { startTimer, pauseTimer, resetTimer, deleteTimer } = useTimersContext();
-  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [halfwayAlertShown, setHalfwayAlertShown] = useState(false);
 
-  // Check for completion and halfway point
+  // Check for halfway point
   useEffect(() => {
-    // Timer completed
-    if (timer.remaining <= 0 && timer.status === "Completed" && !showCompletionModal) {
-      setShowCompletionModal(true);
-    }
-
     // Halfway alert (only show once per timer cycle)
     if (
       !halfwayAlertShown &&
@@ -39,7 +38,7 @@ const TimerItem = ({ timer }) => {
     if (timer.remaining === timer.duration) {
       setHalfwayAlertShown(false);
     }
-  }, [timer.remaining, timer.status, timer.duration, timer.name, showCompletionModal, halfwayAlertShown]);
+  }, [timer.remaining, timer.status, timer.duration, timer.name, halfwayAlertShown]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -178,29 +177,6 @@ const TimerItem = ({ timer }) => {
           <span>Delete</span>
         </button>
       </div>
-
-      {/* Completion Modal */}
-      <Modal
-        isOpen={showCompletionModal}
-        onClose={() => setShowCompletionModal(false)}
-        title="Timer Completed!"
-        type="success"
-      >
-        <div className="text-center space-y-4">
-          <div className="text-6xl">🎉</div>
-          <div>
-            <p className="text-lg font-semibold">
-              Congratulations!
-            </p>
-            <p className="text-gray-600 dark:text-gray-400">
-              Your timer "<strong>{timer.name}</strong>" has completed successfully.
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-              Duration: {formatTime(timer.duration)}
-            </p>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };

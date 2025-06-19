@@ -4,10 +4,9 @@ import App from './App.jsx'
 import { ThemeProvider } from './hooks/ThemeContext.jsx'
 import './index.css'
 
+// main.jsx - Remove the extra ThemeProvider
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
+    <App />
   </React.StrictMode>,
 )
