@@ -1,35 +1,64 @@
-import TimerItem from "./TimerItem";
-import CategoryActions from "./CategoryActions";
+// src/components/TimerList.jsx
+import React from 'react';
+import { useTimersContext } from '../hooks/TimersContext';
+import TimerItem from './TimerItem';
+import CategoryActions from './CategoryActions';
 
-function TimerList({ timers, startTimer, pauseTimer, resetTimer, bulkAction }) {
+const TimerList = () => {
+  const { timers } = useTimersContext();
+
   // Group timers by category
-  const grouped = timers.reduce((acc, timer) => {
-    acc[timer.category] = acc[timer.category] || [];
+  const groupedTimers = timers.reduce((acc, timer) => {
+    if (!acc[timer.category]) {
+      acc[timer.category] = [];
+    }
     acc[timer.category].push(timer);
     return acc;
   }, {});
 
+  // If no timers, show empty state
+  if (timers.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4">⏱️</div>
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          No timers yet
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400">
+          Create your first timer to get started!
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-6">
-      {Object.keys(grouped).map((category) => (
-        <div key={category} className="mb-4 p-4 border rounded bg-white">
-          <h2 className="text-lg font-bold mb-2">{category}</h2>
-          <CategoryActions category={category} bulkAction={bulkAction} />
-          <div className="space-y-2">
-            {grouped[category].map((timer) => (
-              <TimerItem
-                key={timer.id}
-                timer={timer}
-                startTimer={startTimer}
-                pauseTimer={pauseTimer}
-                resetTimer={resetTimer}
-              />
+    <div className="space-y-6">
+      {Object.entries(groupedTimers).map(([category, categoryTimers]) => (
+        <div key={category} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+          {/* Category Header */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+              <span className="mr-2">📁</span>
+              {category}
+              <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+                ({categoryTimers.length})
+              </span>
+            </h2>
+          </div>
+
+          {/* Category Actions */}
+          <CategoryActions category={category} />
+
+          {/* Timer Items */}
+          <div className="space-y-4">
+            {categoryTimers.map((timer) => (
+              <TimerItem key={timer.id} timer={timer} />
             ))}
           </div>
         </div>
       ))}
     </div>
   );
-}
+};
 
 export default TimerList;

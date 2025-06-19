@@ -1,221 +1,273 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+// src/hooks/TimersContext.jsx
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
-// Create context
-export const TimersContext = createContext();
-
-// Hook to use context easily
-export const useTimersContext = () => {
-  const context = useContext(TimersContext);
-  if (!context) {
-    throw new Error("useTimersContext must be used within TimersProvider");
-  }
-  return context;
+// Timer statuses
+const TIMER_STATUS = {
+  PAUSED: 'Paused',
+  RUNNING: 'Running',
+  COMPLETED: 'Completed'
 };
 
-// Timer Provider Component
-export const TimersProvider = ({ children }) => {
-  // Load initial state from localStorage
-  const [timers, setTimers] = useState(() => {
-    const stored = localStorage.getItem("timers");
-    return stored ? JSON.parse(stored) : [];
-  });
+// Action types
+const TIMER_ACTIONS = {
+  ADD_TIMER: 'ADD_TIMER',
+  START_TIMER: 'START_TIMER',
+  PAUSE_TIMER: 'PAUSE_TIMER',
+  RESET_TIMER: 'RESET_TIMER',
+  DELETE_TIMER: 'DELETE_TIMER',
+  TICK_TIMER: 'TICK_TIMER',
+  COMPLETE_TIMER: 'COMPLETE_TIMER',
+  BULK_ACTION: 'BULK_ACTION'
+};
 
-  const [history, setHistory] = useState(() => {
-    const storedHistory = localStorage.getItem("timerHistory");
-    return storedHistory ? JSON.parse(storedHistory) : [];
-  });
+// Initial state
+const initialState = {
+  timers: [],
+  history: [],
+  activeIntervals: {}
+};
 
-  // Save to localStorage whenever timers or history changes
-  useEffect(() => {
-    localStorage.setItem("timers", JSON.stringify(timers));
-  }, [timers]);
+// Timer reducer
+const timersReducer = (state, action) => {
+  switch (action.type) {
+    case TIMER_ACTIONS.ADD_TIMER:
+      const newTimer = {
+        id: Date.now() + Math.random(),
+        name: action.payload.name,
+        duration: action.payload.duration,
+        remaining: action.payload.duration,
+        category: action.payload.category,
+        status: TIMER_STATUS.PAUSED,
+        createdAt: new Date().toISOString()
+      };
+      return {
+        ...state,
+        timers: [...state.timers, newTimer]
+      };
 
-  useEffect(() => {
-    localStorage.setItem("timerHistory", JSON.stringify(history));
-  }, [history]);
+    case TIMER_ACTIONS.START_TIMER:
+      return {
+        ...state,
+        timers: state.timers.map(timer =>
+          timer.id === action.payload.id && timer.remaining > 0
+            ? { ...timer, status: TIMER_STATUS.RUNNING }
+            : timer
+        )
+      };
 
-  // Timer interval management
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimers(prevTimers => 
-        prevTimers.map(timer => {
-          if (timer.status === "Running" && timer.remaining > 0) {
-            const newRemaining = timer.remaining - 1;
-            
-            // Check if timer just completed
-            if (newRemaining <= 0) {
-              // Add to history
-              const completedTimer = {
+    case TIMER_ACTIONS.PAUSE_TIMER:
+      return {
+        ...state,
+        timers: state.timers.map(timer =>
+          timer.id === action.payload.id
+            ? { ...timer, status: TIMER_STATUS.PAUSED }
+            : timer
+        )
+      };
+
+    case TIMER_ACTIONS.RESET_TIMER:
+      return {
+        ...state,
+        timers: state.timers.map(timer =>
+          timer.id === action.payload.id
+            ? {
                 ...timer,
-                remaining: 0,
-                status: "Completed",
-                completedAt: new Date().toISOString()
-              };
-              
-              // Add to history state
-              setHistory(prev => [completedTimer, ...prev]);
-              
-              return completedTimer;
-            }
-            
-            return { ...timer, remaining: newRemaining };
+                remaining: timer.duration,
+                status: TIMER_STATUS.PAUSED
+              }
+            : timer
+        )
+      };
+
+    case TIMER_ACTIONS.DELETE_TIMER:
+      return {
+        ...state,
+        timers: state.timers.filter(timer => timer.id !== action.payload.id)
+      };
+
+    case TIMER_ACTIONS.TICK_TIMER:
+      return {
+        ...state,
+        timers: state.timers.map(timer => {
+          if (timer.id === action.payload.id && timer.status === TIMER_STATUS.RUNNING) {
+            const newRemaining = Math.max(0, timer.remaining - 1);
+            return {
+              ...timer,
+              remaining: newRemaining,
+              status: newRemaining === 0 ? TIMER_STATUS.COMPLETED : timer.status
+            };
           }
           return timer;
         })
-      );
-    }, 1000);
+      };
 
-    return () => clearInterval(interval);
-  }, []);
+    case TIMER_ACTIONS.COMPLETE_TIMER:
+      const completedTimer = state.timers.find(t => t.id === action.payload.id);
+      if (!completedTimer) return state;
 
-  // Add new timer
-  const addTimer = useCallback((timerData) => {
-    const newTimer = {
-      id: Date.now() + Math.random(), // Ensure unique ID
-      name: timerData.name,
-      duration: parseInt(timerData.duration),
-      remaining: parseInt(timerData.duration),
-      category: timerData.category,
-      status: "Paused",
-      completed: false,
-      createdAt: new Date().toISOString()
-    };
-    
-    setTimers(prev => [...prev, newTimer]);
-    return newTimer;
-  }, []);
+      const historyEntry = {
+        ...completedTimer,
+        completedAt: new Date().toISOString()
+      };
 
-  // Update specific timer
-  const updateTimer = useCallback((id, updates) => {
-    setTimers(prev => 
-      prev.map(timer => 
-        timer.id === id ? { ...timer, ...updates } : timer
-      )
-    );
-  }, []);
+      return {
+        ...state,
+        history: [historyEntry, ...state.history]
+      };
 
-  // Start timer
-  const startTimer = useCallback((id) => {
-    updateTimer(id, { status: "Running" });
-  }, [updateTimer]);
+    case TIMER_ACTIONS.BULK_ACTION:
+      const { category, actionType } = action.payload;
+      return {
+        ...state,
+        timers: state.timers.map(timer => {
+          if (timer.category === category) {
+            switch (actionType) {
+              case 'start':
+                return timer.remaining > 0 ? { ...timer, status: TIMER_STATUS.RUNNING } : timer;
+              case 'pause':
+                return { ...timer, status: TIMER_STATUS.PAUSED };
+              case 'reset':
+                return { ...timer, remaining: timer.duration, status: TIMER_STATUS.PAUSED };
+              default:
+                return timer;
+            }
+          }
+          return timer;
+        })
+      };
 
-  // Pause timer
-  const pauseTimer = useCallback((id) => {
-    updateTimer(id, { status: "Paused" });
-  }, [updateTimer]);
+    default:
+      return state;
+  }
+};
 
-  // Reset timer
-  const resetTimer = useCallback((id) => {
-    setTimers(prev => 
-      prev.map(timer => {
-        if (timer.id === id) {
-          return {
-            ...timer,
-            remaining: timer.duration,
-            status: "Paused",
-            completed: false
-          };
-        }
-        return timer;
-      })
-    );
-  }, []);
+// Create context
+const TimersContext = createContext();
 
-  // Delete timer
-  const deleteTimer = useCallback((id) => {
-    setTimers(prev => prev.filter(timer => timer.id !== id));
-  }, []);
+// Provider component
+export const TimersProvider = ({ children }) => {
+  const [state, dispatch] = useReducer(timersReducer, initialState);
 
-  // Bulk actions for category
-  const bulkAction = useCallback((category, action) => {
-    const categoryTimers = timers.filter(timer => timer.category === category);
-    
-    categoryTimers.forEach(timer => {
-      switch (action) {
-        case "start":
-          if (timer.remaining > 0) startTimer(timer.id);
-          break;
-        case "pause":
-          pauseTimer(timer.id);
-          break;
-        case "reset":
-          resetTimer(timer.id);
-          break;
-        default:
-          break;
+  // Timer intervals management
+  useEffect(() => {
+    const intervals = {};
+
+    // Create intervals for running timers
+    state.timers.forEach(timer => {
+      if (timer.status === TIMER_STATUS.RUNNING && timer.remaining > 0) {
+        intervals[timer.id] = setInterval(() => {
+          dispatch({
+            type: TIMER_ACTIONS.TICK_TIMER,
+            payload: { id: timer.id }
+          });
+        }, 1000);
       }
     });
-  }, [timers, startTimer, pauseTimer, resetTimer]);
 
-  // Get unique categories
-  const getCategories = useCallback(() => {
-    return [...new Set(timers.map(timer => timer.category))].filter(Boolean);
-  }, [timers]);
+    // Check for completed timers and add to history
+    state.timers.forEach(timer => {
+      if (timer.status === TIMER_STATUS.COMPLETED && timer.remaining === 0) {
+        // Add to history if not already there
+        const alreadyInHistory = state.history.some(h => 
+          h.id === timer.id && h.completedAt
+        );
+        if (!alreadyInHistory) {
+          dispatch({
+            type: TIMER_ACTIONS.COMPLETE_TIMER,
+            payload: { id: timer.id }
+          });
+        }
+      }
+    });
 
-  // Get timers by category
-  const getTimersByCategory = useCallback((category) => {
-    return timers.filter(timer => timer.category === category);
-  }, [timers]);
+    // Cleanup function
+    return () => {
+      Object.values(intervals).forEach(interval => {
+        clearInterval(interval);
+      });
+    };
+  }, [state.timers]);
 
-  // Get timers by status
-  const getTimersByStatus = useCallback((status) => {
-    return timers.filter(timer => timer.status === status);
-  }, [timers]);
+  // Context methods
+  const addTimer = (timerData) => {
+    dispatch({
+      type: TIMER_ACTIONS.ADD_TIMER,
+      payload: timerData
+    });
+    return timerData;
+  };
 
-  // Clear completed timers
-  const clearCompletedTimers = useCallback(() => {
-    setTimers(prev => prev.filter(timer => timer.status !== "Completed"));
-  }, []);
+  const startTimer = (id) => {
+    dispatch({
+      type: TIMER_ACTIONS.START_TIMER,
+      payload: { id }
+    });
+  };
 
-  // Export history as JSON
-  const exportHistory = useCallback(() => {
-    const dataStr = JSON.stringify(history, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `timer-history-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [history]);
+  const pauseTimer = (id) => {
+    dispatch({
+      type: TIMER_ACTIONS.PAUSE_TIMER,
+      payload: { id }
+    });
+  };
 
-  // Clear all history
-  const clearHistory = useCallback(() => {
-    setHistory([]);
-  }, []);
+  const resetTimer = (id) => {
+    dispatch({
+      type: TIMER_ACTIONS.RESET_TIMER,
+      payload: { id }
+    });
+  };
 
-  const value = {
-    // State
-    timers,
-    history,
-    
-    // Basic timer operations
+  const deleteTimer = (id) => {
+    dispatch({
+      type: TIMER_ACTIONS.DELETE_TIMER,
+      payload: { id }
+    });
+  };
+
+  const bulkAction = (category, actionType) => {
+    dispatch({
+      type: TIMER_ACTIONS.BULK_ACTION,
+      payload: { category, actionType }
+    });
+  };
+
+  const getCategories = () => {
+    const categories = state.timers.map(timer => timer.category);
+    return [...new Set(categories)];
+  };
+
+  const getTimersByCategory = (category) => {
+    return state.timers.filter(timer => timer.category === category);
+  };
+
+  const contextValue = {
+    timers: state.timers,
+    history: state.history,
     addTimer,
-    updateTimer,
     startTimer,
     pauseTimer,
     resetTimer,
     deleteTimer,
-    
-    // Bulk operations
     bulkAction,
-    clearCompletedTimers,
-    
-    // Utility functions
     getCategories,
-    getTimersByCategory,
-    getTimersByStatus,
-    
-    // History operations
-    exportHistory,
-    clearHistory
+    getTimersByCategory
   };
 
   return (
-    <TimersContext.Provider value={value}>
+    <TimersContext.Provider value={contextValue}>
       {children}
     </TimersContext.Provider>
   );
 };
+
+// Custom hook to use the context
+export const useTimersContext = () => {
+  const context = useContext(TimersContext);
+  if (!context) {
+    throw new Error('useTimersContext must be used within a TimersProvider');
+  }
+  return context;
+};
+
+export default TimersContext;

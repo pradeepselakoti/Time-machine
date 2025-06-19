@@ -1,25 +1,64 @@
-import React from "react";
+// src/components/CategoryActions.jsx
+import React from 'react';
+import { useTimersContext } from '../hooks/TimersContext';
 
-const CategoryActions = ({ category, onBulkAction }) => {
+const CategoryActions = ({ category }) => {
+  const { bulkAction, getTimersByCategory } = useTimersContext();
+  
+  const categoryTimers = getTimersByCategory(category);
+  const hasTimers = categoryTimers.length > 0;
+  const hasRunningTimers = categoryTimers.some(timer => timer.status === 'Running');
+  const hasPausedTimers = categoryTimers.some(timer => timer.status === 'Paused' && timer.remaining > 0);
+
+  const handleBulkStart = () => {
+    bulkAction(category, 'start');
+  };
+
+  const handleBulkPause = () => {
+    bulkAction(category, 'pause');
+  };
+
+  const handleBulkReset = () => {
+    if (window.confirm(`Reset all timers in "${category}" category?`)) {
+      bulkAction(category, 'reset');
+    }
+  };
+
+  if (!hasTimers) return null;
+
   return (
-    <div className="space-x-2">
+    <div className="flex items-center justify-end space-x-2 pb-3 border-b border-gray-200 dark:border-gray-600 mb-4">
+      <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">
+        Category Actions:
+      </span>
+      
       <button
-        className="bg-green-500 px-2 py-1 text-white rounded"
-        onClick={() => onBulkAction(category, "start")}
+        onClick={handleBulkStart}
+        disabled={!hasPausedTimers}
+        className="flex items-center space-x-1 px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded text-sm font-medium transition-colors"
+        title="Start all paused timers in this category"
       >
-        Start All
+        <span>▶️</span>
+        <span>Start All</span>
       </button>
+      
       <button
-        className="bg-yellow-500 px-2 py-1 text-white rounded"
-        onClick={() => onBulkAction(category, "pause")}
+        onClick={handleBulkPause}
+        disabled={!hasRunningTimers}
+        className="flex items-center space-x-1 px-3 py-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded text-sm font-medium transition-colors"
+        title="Pause all running timers in this category"
       >
-        Pause All
+        <span>⏸️</span>
+        <span>Pause All</span>
       </button>
+      
       <button
-        className="bg-blue-500 px-2 py-1 text-white rounded"
-        onClick={() => onBulkAction(category, "reset")}
+        onClick={handleBulkReset}
+        className="flex items-center space-x-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+        title="Reset all timers in this category"
       >
-        Reset All
+        <span>🔄</span>
+        <span>Reset All</span>
       </button>
     </div>
   );
