@@ -58,14 +58,18 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
 
   // Handle close with proper event handling
   const handleClose = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log("Modal close button clicked"); // Debug log
     onClose();
   };
 
   // Handle backdrop click
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
+      console.log("Backdrop clicked"); // Debug log
       onClose();
     }
   };
