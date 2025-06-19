@@ -4,7 +4,9 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (event) => {
-      if (event.key === "Escape" || event.keyCode === 27) {
+      if (event.key === "Escape" && isOpen) {
+        event.preventDefault();
+        event.stopPropagation();
         onClose();
       }
     };
@@ -56,22 +58,20 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
 
   const styles = getModalStyles();
 
-  // Handle close with proper event handling
-  const handleClose = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    console.log("Modal close button clicked"); // Debug log
-    onClose();
-  };
-
   // Handle backdrop click
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
-      console.log("Backdrop clicked"); // Debug log
+      e.preventDefault();
+      e.stopPropagation();
       onClose();
     }
+  };
+
+  // Handle close button click
+  const handleCloseClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClose();
   };
 
   return (
@@ -90,7 +90,7 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
             {title}
           </h2>
           <button
-            onClick={handleClose}
+            onClick={handleCloseClick}
             className="text-white hover:text-gray-200 transition-colors p-1 rounded focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
             aria-label="Close modal"
             type="button"
@@ -104,17 +104,6 @@ const Modal = ({ isOpen, onClose, title, children, type = "default" }) => {
         {/* Content */}
         <div className="px-6 py-4 max-h-96 overflow-y-auto">
           {children}
-        </div>
-
-        {/* Footer with close button */}
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex justify-end">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-            type="button"
-          >
-            Close
-          </button>
         </div>
       </div>
     </div>

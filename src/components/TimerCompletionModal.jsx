@@ -9,8 +9,10 @@ const TimerCompletionModal = ({ isOpen, onClose, timerName, duration }) => {
   };
 
   const handleClose = () => {
-    console.log("Timer completion modal closing"); // Debug log
-    onClose();
+    console.log("Timer completion modal closing");
+    if (typeof onClose === 'function') {
+      onClose();
+    }
   };
 
   return (
@@ -35,22 +37,21 @@ const TimerCompletionModal = ({ isOpen, onClose, timerName, duration }) => {
         </p>
         
         {/* Duration */}
-        <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Duration:</p>
+        <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-6">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Duration:</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
             {formatDuration(duration)}
           </p>
         </div>
         
-        {/* Optional: Add more actions here */}
-        <div className="flex justify-center space-x-3">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
-          >
-            Great!
-          </button>
-        </div>
+        {/* Close Button */}
+        <button
+          onClick={handleClose}
+          className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+          type="button"
+        >
+          Close
+        </button>
       </div>
     </Modal>
   );
